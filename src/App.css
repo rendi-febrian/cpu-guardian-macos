@@ -10,7 +10,7 @@ button, input, select { font: inherit; }
 }
 .sidebar { width: 226px; flex: 0 0 226px; display: flex; flex-direction: column; padding: 25px 14px 19px; border-right: 1px solid var(--border); background: var(--sidebar); }
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px 34px; }
-.brandIcon { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 11px; border: 1px solid #394366; color: #aab6ff; background: #22283f; font-size: 21px; }
+.brandIcon { width: 35px; height: 35px; display: block; border-radius: 10px; box-shadow: 0 3px 12px #060a1490; }
 .brand b { display: block; font-size: 13px; letter-spacing: .1px; }
 .brand small { display: block; margin-top: 4px; color: var(--quiet); font-size: 8px; letter-spacing: 1.2px; }
 .navLabel, .eyebrow { color: var(--quiet); font-size: 9px; font-weight: 700; letter-spacing: 1.3px; }
@@ -100,8 +100,27 @@ td:first-child { color: var(--text); font-weight: 550; }
 .switch:focus-visible { outline: 2px solid #aab3ff; outline-offset: 2px; }
 .settingsNote { grid-column: 1 / -1; display: flex; gap: 8px; padding: 3px 4px 14px; color: var(--quiet); font-size: 9px; line-height: 1.5; }
 .settingsNote span { color: #8f9cff; }
+.thermalOverview { padding-bottom: 14px; }
+.thermalGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.thermalGrid.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
+.thermalCard { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--panel) 75%, transparent); }
+.thermalGrid.compact .thermalCard { padding: 10px; gap: 8px; }
+.thermalIcon, .thermalIntroIcon { flex: 0 0 auto; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 8px; color: #ffad78; background: #ff9c5520; font-size: 16px; }
+.thermalIcon.red { color: #ff8887; background: #ff686820; }.thermalIcon.purple { color: #b99bff; background: #9472ff20; }.thermalIcon.blue { color: #86b8ff; background: #579cff20; }.thermalIcon.green { color: #78dfaa; background: #50cc8a20; }.thermalIcon.yellow { color: #f3cf78; background: #f3c54f20; }.thermalIcon.cyan { color: #78d9e2; background: #48cbd520; }
+.thermalCardText { flex: 1; min-width: 0; }
+.thermalCardText span { display: block; overflow: hidden; color: var(--muted); font-size: 8px; font-weight: 750; letter-spacing: .55px; text-overflow: ellipsis; white-space: nowrap; }
+.thermalCardText small { display: block; overflow: hidden; margin-top: 4px; color: var(--quiet); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.thermalCard > strong { flex: 0 0 auto; color: var(--text); font-size: 15px; font-weight: 620; letter-spacing: -.4px; white-space: nowrap; }
+.thermalGrid.compact .thermalCard > strong { font-size: 13px; }
+.thermalCard > strong.unavailable { color: var(--quiet); font-weight: 450; }
+.thermalIntro { display: flex; align-items: center; gap: 13px; padding: 18px; }
+.thermalIntroIcon { width: 40px; height: 40px; border-radius: 11px; font-size: 22px; }
+.thermalIntro h2 { margin: 0; font-size: 13px; font-weight: 650; }
+.thermalIntro p { max-width: 760px; margin: 6px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .errorBanner { margin-bottom: 14px; padding: 10px 13px; border-radius: 7px; color: #ffb2a8; background: #311d20; font-size: 10px; }
 footer { padding: 3px 2px; color: var(--quiet); text-align: right; font-size: 8px; }
 footer span { padding: 0 4px; color: #555d6b; }
 @media (max-width: 1120px) { .main { padding: 25px 22px 18px; }.metricsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.overviewGrid { grid-template-columns: 1fr; }.settingsLayout { grid-template-columns: 1fr; } }
 @media (max-width: 870px) { .sidebar { width: 185px; flex-basis: 185px; }.main { padding: 22px 16px; }.chip { display: none; }.metricsGrid { gap: 9px; }.metricCard { padding: 13px; }.panel { padding: 14px; } }
+@media (max-width: 1120px) { .thermalGrid, .thermalGrid.compact { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .thermalGrid, .thermalGrid.compact { grid-template-columns: 1fr; } }

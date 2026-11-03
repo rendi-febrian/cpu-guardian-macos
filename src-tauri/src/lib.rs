@@ -4,13 +4,15 @@ use std::{
     path::PathBuf,
     process::Command,
     sync::Mutex,
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, State,
 };
+#[cfg(target_os = "macos")]
+use power_monitor::Smc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -21,6 +23,13 @@ struct Settings {
     show_disk: bool,
     show_network: bool,
     show_battery: bool,
+    show_cpu_temperature: bool,
+    show_performance_temperature: bool,
+    show_efficiency_temperature: bool,
+    show_gpu_temperature: bool,
+    show_ssd_temperature: bool,
+    show_battery_temperature: bool,
+    show_ambient_temperature: bool,
     start_at_login: bool,
     launch_hidden: bool,
     theme: String,
@@ -36,6 +45,13 @@ impl Default for Settings {
             show_disk: false,
             show_network: false,
             show_battery: false,
+            show_cpu_temperature: true,
+            show_performance_temperature: false,
+            show_efficiency_temperature: false,
+            show_gpu_temperature: false,
+            show_ssd_temperature: false,
+            show_battery_temperature: false,
+            show_ambient_temperature: false,
             start_at_login: true,
             launch_hidden: true,
             theme: "system".into(),
@@ -69,6 +85,14 @@ struct Snapshot {
     network_rx_bytes_per_second: u64,
     network_tx_bytes_per_second: u64,
     battery_percent: Option<u8>,
+    cpu_temp_c: Option<f32>,
+    cpu_temp_source: Option<String>,
+    cpu_performance_temp_c: Option<f32>,
+    cpu_efficiency_temp_c: Option<f32>,
+    gpu_temp_c: Option<f32>,
+    ssd_temp_c: Option<f32>,
+    battery_temp_c: Option<f32>,
+    ambient_temp_c: Option<f32>,
     processes: Vec<ProcessInfo>,
 }
 
@@ -77,6 +101,20 @@ struct SystemState {
     settings_path: PathBuf,
     previous_network: Mutex<Option<(Instant, u64, u64)>>,
     latest: Mutex<Option<Snapshot>>,
+    #[cfg(target_os = "macos")]
+    smc: Mutex<Option<Smc>>,
+}
+
+#[derive(Default)]
+struct ThermalSnapshot {
+    cpu_temp_c: Option<f32>,
+    cpu_temp_source: Option<String>,
+    cpu_performance_temp_c: Option<f32>,
+    cpu_efficiency_temp_c: Option<f32>,
+    gpu_temp_c: Option<f32>,
+    ssd_temp_c: Option<f32>,
+    battery_temp_c: Option<f32>,
+    ambient_temp_c: Option<f32>,
 }
 
 const PROTECTED: &[&str] = &["kernel_task", "WindowServer", "launchd", "loginwindow", "systemstats"];
@@ -133,7 +171,16 @@ fn save_settings(
 }
 
 #[tauri::command]
-fn process_snapshot(app: AppHandle, state: State<'_, SystemState>) -> Result<Snapshot, String> {
+fn process_snapshot(state: State<'_, SystemState>) -> Result<Snapshot, String> {
+    state
+        .latest
+        .lock()
+        .map_err(|_| "snapshot state lock failed".to_string())?
+        .clone()
+        .ok_or_else(|| "The first system sample is still starting".into())
+}
+
+fn collect_snapshot(app: &AppHandle, state: &SystemState) -> Result<Snapshot, String> {
     let output = Command::new("/bin/ps")
         .args(["-axo", "pid=,ppid=,pcpu=,rss=,etime=,comm="])
         .output()
@@ -199,6 +246,7 @@ fn process_snapshot(app: AppHandle, state: State<'_, SystemState>) -> Result<Sna
         rates
     };
     let (disk_total, disk_used) = disk_usage();
+    let thermals = read_thermal_snapshot(&state);
     let snapshot = Snapshot {
         sampled_at: SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs(),
         cpu_percent,
@@ -209,13 +257,34 @@ fn process_snapshot(app: AppHandle, state: State<'_, SystemState>) -> Result<Sna
         network_rx_bytes_per_second,
         network_tx_bytes_per_second,
         battery_percent: battery_level(),
+        cpu_temp_c: thermals.cpu_temp_c,
+        cpu_temp_source: thermals.cpu_temp_source,
+        cpu_performance_temp_c: thermals.cpu_performance_temp_c,
+        cpu_efficiency_temp_c: thermals.cpu_efficiency_temp_c,
+        gpu_temp_c: thermals.gpu_temp_c,
+        ssd_temp_c: thermals.ssd_temp_c,
+        battery_temp_c: thermals.battery_temp_c,
+        ambient_temp_c: thermals.ambient_temp_c,
         processes,
     };
 
     let settings = state.settings.lock().map_err(|_| "settings lock failed")?.clone();
-    update_tray_title(&app, &settings, &snapshot);
+    update_tray_title(app, &settings, &snapshot);
     *state.latest.lock().map_err(|_| "snapshot state lock failed")? = Some(snapshot.clone());
     Ok(snapshot)
+}
+
+fn start_background_sampler(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        let state = app.state::<SystemState>();
+        let _ = collect_snapshot(&app, &state);
+        let interval = state
+            .settings
+            .lock()
+            .map(|settings| settings.sample_interval_seconds.clamp(1, 10))
+            .unwrap_or(2);
+        std::thread::sleep(Duration::from_secs(interval));
+    });
 }
 
 fn update_tray_title(app: &AppHandle, settings: &Settings, snapshot: &Snapshot) {
@@ -249,7 +318,81 @@ fn tray_title(settings: &Settings, snapshot: &Snapshot) -> String {
             items.push(format!("BAT {percent}%"));
         }
     }
+    if settings.show_cpu_temperature {
+        append_temperature(&mut items, "CPU", snapshot.cpu_temp_c);
+    }
+    if settings.show_performance_temperature {
+        append_temperature(&mut items, "P", snapshot.cpu_performance_temp_c);
+    }
+    if settings.show_efficiency_temperature {
+        append_temperature(&mut items, "E", snapshot.cpu_efficiency_temp_c);
+    }
+    if settings.show_gpu_temperature {
+        append_temperature(&mut items, "GPU", snapshot.gpu_temp_c);
+    }
+    if settings.show_ssd_temperature {
+        append_temperature(&mut items, "SSD", snapshot.ssd_temp_c);
+    }
+    if settings.show_battery_temperature {
+        append_temperature(&mut items, "BAT", snapshot.battery_temp_c);
+    }
+    if settings.show_ambient_temperature {
+        append_temperature(&mut items, "AMB", snapshot.ambient_temp_c);
+    }
     if items.is_empty() { "CPU Guardian".into() } else { items.join("  ") }
+}
+
+fn append_temperature(items: &mut Vec<String>, label: &str, temperature: Option<f32>) {
+    if let Some(temperature) = temperature {
+        items.push(format!("{label} {:.0}°", temperature));
+    }
+}
+
+fn valid_temperature(value: f32) -> Option<f32> {
+    (value.is_finite() && (0.0..=125.0).contains(&value)).then_some(value)
+}
+
+#[cfg(target_os = "macos")]
+fn read_thermal_snapshot(state: &SystemState) -> ThermalSnapshot {
+    let Some(reading) = state
+        .smc
+        .lock()
+        .ok()
+        .and_then(|mut smc| smc.as_mut().map(|smc| smc.read_thermals()))
+    else {
+        return ThermalSnapshot::default();
+    };
+
+    let cpu_performance_temp_c = valid_temperature(reading.cpu_performance);
+    let cpu_efficiency_temp_c = valid_temperature(reading.cpu_efficiency);
+    let proximity = valid_temperature(reading.cpu_proximity);
+    let cluster_average = [cpu_performance_temp_c, cpu_efficiency_temp_c]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let cpu_temp_c = proximity.or_else(|| {
+        (!cluster_average.is_empty())
+            .then(|| cluster_average.iter().sum::<f32>() / cluster_average.len() as f32)
+    });
+    let cpu_temp_source = proximity
+        .map(|_| "CPU proximity".to_string())
+        .or_else(|| cpu_temp_c.map(|_| "P/E cluster average".to_string()));
+
+    ThermalSnapshot {
+        cpu_temp_c,
+        cpu_temp_source,
+        cpu_performance_temp_c,
+        cpu_efficiency_temp_c,
+        gpu_temp_c: valid_temperature(reading.gpu),
+        ssd_temp_c: valid_temperature(reading.ssd),
+        battery_temp_c: valid_temperature(reading.battery),
+        ambient_temp_c: valid_temperature(reading.ambient),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn read_thermal_snapshot(_state: &SystemState) -> ThermalSnapshot {
+    ThermalSnapshot::default()
 }
 
 fn short_bytes(bytes: u64, binary: bool) -> String {
@@ -375,6 +518,8 @@ pub fn run() {
                 settings_path,
                 previous_network: Mutex::new(None),
                 latest: Mutex::new(None),
+                #[cfg(target_os = "macos")]
+                smc: Mutex::new(Smc::open().ok()),
             });
 
             #[cfg(target_os = "macos")]
@@ -417,6 +562,11 @@ pub fn run() {
                 tray = tray.icon(icon.clone());
             }
             tray.build(app)?;
+
+            let app_handle = app.handle().clone();
+            let state = app.state::<SystemState>();
+            let _ = collect_snapshot(&app_handle, &state);
+            start_background_sampler(app_handle);
 
             if let Some(window) = app.get_webview_window("main") {
                 if settings.launch_hidden {

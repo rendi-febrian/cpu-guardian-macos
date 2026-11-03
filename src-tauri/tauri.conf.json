@@ -29,7 +29,7 @@
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "Customizable live macOS system stats in the menu bar",
-    "longDescription": "A lightweight Rust-powered macOS menu bar monitor for CPU, memory, disk, network, battery, and processes.",
+    "longDescription": "A lightweight Rust-powered macOS menu bar monitor for system performance, thermal sensors, and processes.",
     "macOS": {
       "minimumSystemVersion": "13.0"
     },

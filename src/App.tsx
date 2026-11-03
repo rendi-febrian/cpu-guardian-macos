@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import logoUrl from './assets/cpu-guardian-logo.svg';
 import './App.css';
 
 type Proc = {
@@ -23,6 +24,14 @@ type Snapshot = {
   networkRxBytesPerSecond: number;
   networkTxBytesPerSecond: number;
   batteryPercent: number | null;
+  cpuTempC: number | null;
+  cpuTempSource: string | null;
+  cpuPerformanceTempC: number | null;
+  cpuEfficiencyTempC: number | null;
+  gpuTempC: number | null;
+  ssdTempC: number | null;
+  batteryTempC: number | null;
+  ambientTempC: number | null;
   processes: Proc[];
 };
 
@@ -33,6 +42,13 @@ type Settings = {
   showDisk: boolean;
   showNetwork: boolean;
   showBattery: boolean;
+  showCpuTemperature: boolean;
+  showPerformanceTemperature: boolean;
+  showEfficiencyTemperature: boolean;
+  showGpuTemperature: boolean;
+  showSsdTemperature: boolean;
+  showBatteryTemperature: boolean;
+  showAmbientTemperature: boolean;
   startAtLogin: boolean;
   launchHidden: boolean;
   theme: 'system' | 'dark' | 'light';
@@ -46,6 +62,13 @@ const DEFAULT_SETTINGS: Settings = {
   showDisk: false,
   showNetwork: false,
   showBattery: false,
+  showCpuTemperature: true,
+  showPerformanceTemperature: false,
+  showEfficiencyTemperature: false,
+  showGpuTemperature: false,
+  showSsdTemperature: false,
+  showBatteryTemperature: false,
+  showAmbientTemperature: false,
   startAtLogin: true,
   launchHidden: true,
   theme: 'system',
@@ -54,6 +77,7 @@ const DEFAULT_SETTINGS: Settings = {
 
 const NAV = [
   { id: 'Overview', icon: '◫' },
+  { id: 'Thermals', icon: '♨' },
   { id: 'Processes', icon: '▤' },
   { id: 'Developer Tools', icon: '⌘' },
   { id: 'Settings', icon: '⚙' },
@@ -82,6 +106,13 @@ function trayPreview(settings: Settings, data: Snapshot | null) {
     values.push(`↓${formatBytes(data.networkRxBytesPerSecond, settings.binaryUnits, true)} ↑${formatBytes(data.networkTxBytesPerSecond, settings.binaryUnits, true)}`);
   }
   if (settings.showBattery && data.batteryPercent !== null) values.push(`BAT ${data.batteryPercent}%`);
+  if (settings.showCpuTemperature && data.cpuTempC !== null) values.push(`CPU ${Math.round(data.cpuTempC)}°`);
+  if (settings.showPerformanceTemperature && data.cpuPerformanceTempC !== null) values.push(`P ${Math.round(data.cpuPerformanceTempC)}°`);
+  if (settings.showEfficiencyTemperature && data.cpuEfficiencyTempC !== null) values.push(`E ${Math.round(data.cpuEfficiencyTempC)}°`);
+  if (settings.showGpuTemperature && data.gpuTempC !== null) values.push(`GPU ${Math.round(data.gpuTempC)}°`);
+  if (settings.showSsdTemperature && data.ssdTempC !== null) values.push(`SSD ${Math.round(data.ssdTempC)}°`);
+  if (settings.showBatteryTemperature && data.batteryTempC !== null) values.push(`BAT ${Math.round(data.batteryTempC)}°`);
+  if (settings.showAmbientTemperature && data.ambientTempC !== null) values.push(`AMB ${Math.round(data.ambientTempC)}°`);
   return values.length ? values.join('  ') : 'CPU Guardian';
 }
 
@@ -150,7 +181,7 @@ function App() {
     <div className={`shell ${themeClass}`}>
       <aside className="sidebar">
         <div className="brand">
-          <span className="brandIcon">◉</span>
+          <img className="brandIcon" src={logoUrl} alt="" />
           <span><b>CPU Guardian</b><small>MAC SYSTEM MONITOR</small></span>
         </div>
         <div className="navLabel">MONITOR</div>
@@ -216,7 +247,22 @@ function App() {
                   </article>
                 </section>
 
+                <section className="panel thermalOverview">
+                  <div className="panelHead"><div><h2>Temperatures</h2><p>Internal thermal sensors · updates every {settings.sampleIntervalSeconds}s</p></div><button className="textButton" onClick={() => setTab('Thermals')}>All sensors <span>→</span></button></div>
+                  <ThermalGrid data={data} compact />
+                </section>
+
                 <ProcessTable processes={data.processes.slice(0, 8)} binaryUnits={settings.binaryUnits} title="Top processes" description="Sorted by current CPU usage" onViewAll={() => setTab('Processes')} />
+              </>
+            )}
+
+            {tab === 'Thermals' && (
+              <>
+                <section className="panel thermalIntro">
+                  <div className="thermalIntroIcon">♨</div>
+                  <div><h2>Internal temperature sensors</h2><p>Live readings from the Mac’s system management controller. Sensor availability depends on the Mac model and macOS version; unavailable readings appear as “—”.</p></div>
+                </section>
+                <ThermalGrid data={data} />
               </>
             )}
 
@@ -262,6 +308,29 @@ function MetricCard({ title, value, note, progress, tone }: { title: string; val
       {progress === null && <div className="meterPlaceholder" />}
       <small>{note}</small>
     </article>
+  );
+}
+
+function ThermalGrid({ data, compact = false }: { data: Snapshot; compact?: boolean }) {
+  const metrics = [
+    { title: 'CPU TEMPERATURE', value: data.cpuTempC, note: data.cpuTempSource ?? 'CPU sensor unavailable', tone: 'orange' },
+    { title: 'PERFORMANCE CLUSTER', value: data.cpuPerformanceTempC, note: 'P-core cluster', tone: 'red' },
+    { title: 'EFFICIENCY CLUSTER', value: data.cpuEfficiencyTempC, note: 'E-core cluster', tone: 'purple' },
+    { title: 'GPU TEMPERATURE', value: data.gpuTempC, note: 'GPU die sensor', tone: 'blue' },
+    { title: 'SSD TEMPERATURE', value: data.ssdTempC, note: 'Internal storage sensor', tone: 'green' },
+    { title: 'BATTERY TEMPERATURE', value: data.batteryTempC, note: 'Battery sensor', tone: 'yellow' },
+    { title: 'AMBIENT TEMPERATURE', value: data.ambientTempC, note: 'Air inlet sensor', tone: 'cyan' },
+  ];
+  return (
+    <div className={`thermalGrid ${compact ? 'compact' : ''}`}>
+      {metrics.map((metric) => (
+        <article className="thermalCard" key={metric.title}>
+          <div className={`thermalIcon ${metric.tone}`}>♨</div>
+          <div className="thermalCardText"><span>{metric.title}</span><small>{metric.note}</small></div>
+          <strong className={metric.value === null ? 'unavailable' : ''}>{metric.value === null ? '—' : `${metric.value.toFixed(1)}°C`}</strong>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -333,6 +402,13 @@ function SettingsPage({ settings, data, onChange }: { settings: Settings; data: 
           <SettingRow label="Disk usage" description="Used space on the startup volume" checked={settings.showDisk} onChange={(value) => onChange('showDisk', value)} />
           <SettingRow label="Network speed" description="Current receive and send rates" checked={settings.showNetwork} onChange={(value) => onChange('showNetwork', value)} />
           <SettingRow label="Battery level" description="Shown when this Mac has a battery" checked={settings.showBattery} onChange={(value) => onChange('showBattery', value)} />
+          <SettingRow label="CPU temperature" description="CPU proximity, or cluster average when unavailable" checked={settings.showCpuTemperature} onChange={(value) => onChange('showCpuTemperature', value)} />
+          <SettingRow label="Performance cluster temperature" description="P-core cluster sensor" checked={settings.showPerformanceTemperature} onChange={(value) => onChange('showPerformanceTemperature', value)} />
+          <SettingRow label="Efficiency cluster temperature" description="E-core cluster sensor" checked={settings.showEfficiencyTemperature} onChange={(value) => onChange('showEfficiencyTemperature', value)} />
+          <SettingRow label="GPU temperature" description="GPU die sensor" checked={settings.showGpuTemperature} onChange={(value) => onChange('showGpuTemperature', value)} />
+          <SettingRow label="SSD temperature" description="Internal storage sensor" checked={settings.showSsdTemperature} onChange={(value) => onChange('showSsdTemperature', value)} />
+          <SettingRow label="Battery temperature" description="Battery sensor" checked={settings.showBatteryTemperature} onChange={(value) => onChange('showBatteryTemperature', value)} />
+          <SettingRow label="Ambient temperature" description="Air inlet sensor" checked={settings.showAmbientTemperature} onChange={(value) => onChange('showAmbientTemperature', value)} />
         </div>
       </section>
 

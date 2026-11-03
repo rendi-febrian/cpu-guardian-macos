@@ -559,6 +559,7 @@ dependencies = [
 name = "cpu-guardian"
 version = "0.1.0"
 dependencies = [
+ "power-monitor",
  "serde",
  "serde_json",
  "tauri",
@@ -2651,6 +2652,11 @@ checksum = "d83eb9bc6d8e5cf568e7a1101d60ee05e81ed50ea106026f3d18deeb046d7661"
 dependencies = [
  "zerovec",
 ]
+
+[[package]]
+name = "power-monitor"
+version = "0.1.0"
+source = "git+https://github.com/electricapp/power-monitor?rev=eb13d24205a676d871346411d378fe78d06662d4#eb13d24205a676d871346411d378fe78d06662d4"
 
 [[package]]
 name = "powerfmt"

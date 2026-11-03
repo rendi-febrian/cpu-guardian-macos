@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="12" y1="8" x2="115" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202C48"/>
+      <stop offset="1" stop-color="#101723"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="35" y1="27" x2="91" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A4E4FF"/>
+      <stop offset="1" stop-color="#5C9CFF"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="64" y1="40" x2="64" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE39A"/>
+      <stop offset="1" stop-color="#FF805E"/>
+    </linearGradient>
+    <filter id="glow" x="46" y="33" width="36" height="59" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="31" fill="url(#tile)"/>
+  <rect x="4.75" y="4.75" width="118.5" height="118.5" rx="30.25" stroke="#91BFFF" stroke-opacity=".18" stroke-width="1.5"/>
+  <g stroke="url(#chip)" stroke-linecap="round" stroke-width="4">
+    <path d="M44 23v8M58 23v8M72 23v8M86 23v8M44 97v8M58 97v8M72 97v8M86 97v8M23 43h8M23 57h8M23 71h8M23 85h8M97 43h8M97 57h8M97 71h8M97 85h8"/>
+  </g>
+  <rect x="34" y="31" width="60" height="66" rx="16" fill="#18243A" stroke="url(#chip)" stroke-width="3"/>
+  <path d="M62 47v22" stroke="#FF9B68" stroke-linecap="round" stroke-width="8" opacity=".75" filter="url(#glow)"/>
+  <path d="M62 47v22" stroke="url(#heat)" stroke-linecap="round" stroke-width="7"/>
+  <circle cx="64" cy="76" r="10" fill="url(#heat)"/>
+  <circle cx="64" cy="76" r="4" fill="#FFF0C5" fill-opacity=".82"/>
+  <path d="M78 47h7M78 58h7M78 69h5" stroke="#83CFFF" stroke-linecap="round" stroke-width="3" opacity=".8"/>
+</svg>
