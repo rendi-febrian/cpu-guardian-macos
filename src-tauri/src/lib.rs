@@ -349,7 +349,8 @@ fn append_temperature(items: &mut Vec<String>, label: &str, temperature: Option<
 }
 
 fn valid_temperature(value: f32) -> Option<f32> {
-    (value.is_finite() && (0.0..=125.0).contains(&value)).then_some(value)
+    // power-monitor documents 0°C as its sentinel for an absent SMC sensor.
+    (value.is_finite() && (0.0..=125.0).contains(&value) && value > 0.0).then_some(value)
 }
 
 #[cfg(target_os = "macos")]
