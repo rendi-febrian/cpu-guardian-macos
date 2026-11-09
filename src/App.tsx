@@ -51,6 +51,7 @@ type Settings = {
   showAmbientTemperature: boolean;
   startAtLogin: boolean;
   launchHidden: boolean;
+  hideFromDock: boolean;
   theme: 'system' | 'dark' | 'light';
   binaryUnits: boolean;
 };
@@ -71,6 +72,7 @@ const DEFAULT_SETTINGS: Settings = {
   showAmbientTemperature: false,
   startAtLogin: true,
   launchHidden: true,
+  hideFromDock: true,
   theme: 'system',
   binaryUnits: false,
 };
@@ -418,6 +420,7 @@ function SettingsPage({ settings, data, onChange }: { settings: Settings; data: 
         <div className="settingList">
           <SettingRow label="Start at login" description="Open CPU Guardian when you sign in" checked={settings.startAtLogin} onChange={(value) => onChange('startAtLogin', value)} />
           <SettingRow label="Start in the menu bar" description="Keep the dashboard hidden when the app starts" checked={settings.launchHidden} onChange={(value) => onChange('launchHidden', value)} />
+          <SettingRow label="Hide from Dock" description="Keep CPU Guardian in the menu bar without a Dock icon" checked={settings.hideFromDock} onChange={(value) => onChange('hideFromDock', value)} />
           <SettingRow label="Binary units" description="Use KiB, MiB, and GiB instead of KB, MB, and GB" checked={settings.binaryUnits} onChange={(value) => onChange('binaryUnits', value)} />
         </div>
         <div className="settingSelectRow last"><span><b>Appearance</b><small>Choose the dashboard color scheme</small></span><select value={settings.theme} onChange={(event) => onChange('theme', event.target.value as Settings['theme'])}><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select></div>

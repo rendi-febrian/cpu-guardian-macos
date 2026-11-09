@@ -8,6 +8,7 @@ CPU Guardian is a lightweight macOS system monitor built with Rust, Tauri 2, Rea
 - Live CPU, P-core and E-core, GPU, SSD, battery, and ambient temperature readings from available SMC sensors.
 - Customizable menu bar metrics, sampling interval, appearance, and byte units.
 - Start at login enabled on first launch; startup and hidden-launch behavior can be changed in Settings.
+- Choose whether the running background app appears in the macOS Dock.
 - Dashboard window opens from the menu bar and hides when closed so monitoring can continue.
 - Searchable process list with protected-system and developer-process labels.
 - No telemetry or account connection. Settings stay in the app's local data folder.

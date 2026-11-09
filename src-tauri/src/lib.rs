@@ -32,6 +32,7 @@ struct Settings {
     show_ambient_temperature: bool,
     start_at_login: bool,
     launch_hidden: bool,
+    hide_from_dock: bool,
     theme: String,
     binary_units: bool,
 }
@@ -54,6 +55,7 @@ impl Default for Settings {
             show_ambient_temperature: false,
             start_at_login: true,
             launch_hidden: true,
+            hide_from_dock: true,
             theme: "system".into(),
             binary_units: false,
         }
@@ -145,6 +147,9 @@ fn save_settings(
 
     #[cfg(target_os = "macos")]
     {
+        app.set_dock_visibility(!settings.hide_from_dock)
+            .map_err(|error| error.to_string())?;
+
         use tauri_plugin_autostart::ManagerExt;
         let autostart = app.autolaunch();
         let enabled = autostart.is_enabled().map_err(|e| e.to_string())?;
@@ -514,6 +519,9 @@ pub fn run() {
             if is_first_run {
                 fs::write(&settings_path, serde_json::to_vec_pretty(&settings)?)?;
             }
+            #[cfg(target_os = "macos")]
+            app.set_dock_visibility(!settings.hide_from_dock);
+
             app.manage(SystemState {
                 settings: Mutex::new(settings.clone()),
                 settings_path,
